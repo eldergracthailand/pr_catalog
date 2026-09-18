@@ -3,7 +3,7 @@ import streamlit as st
 
 st.set_page_config(page_title="PR Catalog", page_icon="🔍", layout="wide")
 
-st.title("📚 ระบบค้นหาข้อมูลแคตตาล็อกอุปกรณ์(ใช้ประกอบใบขอซื้อ)  ")
+st.title("📚 ระบบค้นหาข้อมูลแคตตาล็อกอุปกรณ์(PR)  ")
 st.write("พิมพ์คำค้นหาเพื่อดูข้อมูล PR (ข้อมูลนี้สำหรับค้นหาเท่านั้น)")
 
 # ส่วนดึงข้อมูลจาก Google Sheets (ใช้ลิงก์ CSV)
