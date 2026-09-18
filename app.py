@@ -3,7 +3,7 @@ import streamlit as st
 
 st.set_page_config(page_title="PR Catalog", page_icon="🔍", layout="wide")
 
-st.title("📚 ระบบค้นหาข้อมูล PR ส่วนตัว")
+st.title("📚 ระบบค้นหาข้อมูล Purchase Requisition (ใบขอซื้อ)  แคตตาล็อกอุปกรณ์")
 st.write("พิมพ์คำค้นหาเพื่อดูข้อมูล PR (ข้อมูลนี้สำหรับค้นหาเท่านั้น)")
 
 # ส่วนดึงข้อมูลจาก Google Sheets (ใช้ลิงก์ CSV)
@@ -19,7 +19,7 @@ try:
   df = load_data()
 
   search_query = st.text_input(
-      "🔍 ค้นหาข้อมูล (พิมพ์คีย์เวิร์ด เช่น ชื่อโปรเจกต์ หรือหมวดหมู่):"
+      "🔍 ค้นหาข้อมูล (พิมพ์คีย์เวิร์ด เช่น ชื่ออุปกรณ์ โค้ดสินค้าหรือหมวดหมู่):"
   )
 
   if search_query:
