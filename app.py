@@ -9,7 +9,7 @@ st.write("พิมพ์คำค้นหาเพื่อดูข้อม�
 # ส่วนดึงข้อมูลจาก Google Sheets (ใช้ลิงก์ CSV)
 @st.cache_data(ttl=600)
 def load_data():
-  # แทนที่ URL ด้านล่างด้วยลิงก์ CSV ของ Google Sheet ของคุณ
+  # ใช้ลิงก์ CSV ของคุณ
   sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTNxcG6Zwu5wffcY9sYnrIo6Rukcv5Nw9EbtMU7TyCOR8uW2XGAEThrk-0500Y7ELiVDg_7EeJcitl4/pub?gid=0&single=true&output=csv"
   df = pd.read_csv(sheet_url)
   return df
@@ -36,6 +36,29 @@ try:
 
     if not result_df.empty:
       st.dataframe(result_df, use_container_width=True, hide_index=True)
+
+      # ส่วนสำหรับแสดงลิงก์กดคลิกดูรูปภาพเพิ่มเติม (ดึงจากคอลัมน์ 'ลิงก์รูปภาพ' ใน Google Sheets)
+      st.markdown("---")
+      st.subheader("🖼️ ลิงก์รูปภาพ / เอกสารเพิ่มเติมของรายการที่พบ")
+      for index, row in result_df.iterrows():
+        # ตรวจสอบว่ามีคอลัมน์ 'ลิงก์รูปภาพ' และมีข้อมูลลิงก์อยู่จริง
+        if (
+            "ลิงก์รูปภาพ" in row
+            and pd.notna(row["ลิงก์รูปภาพ"])
+            and str(row["ลิงก์รูปภาพ"]).strip() != ""
+        ):
+          item_name = (
+              row["ชื่อสินค้า"]
+              if "ชื่อสินค้า" in row
+              else f"รายการที่ {index+1}"
+          )
+          item_code = (
+              row["รหัสสินค้า"] if "รหัสสินค้า" in row else ""
+          )
+          link_url = str(row["ลิงก์รูปภาพ"]).strip()
+          st.markdown(
+              f"- **{item_code} - {item_name}**: [🔗 คลิกเพื่อดูรูปภาพ/ลิงก์]({link_url})"
+          )
     else:
       st.warning("ไม่พบข้อมูลที่ค้นหา")
   else:
