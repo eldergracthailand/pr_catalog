@@ -21,10 +21,8 @@ try:
     search_query = st.text_input(
         "🔍 ค้นหาข้อมูล (พิมพ์คีย์เวิร์ด เช่น ชื่ออุปกรณ์ โค้ดสินค้าหรือหมวดหมู่):"
     )
-    # เพิ่มปุ่มกดค้นหา
     submit_button = st.form_submit_button(label="🔍 ค้นหา")
 
-  # ทำงานเมื่อกดปุ่มค้นหา หรือมีการพิมพ์ค้นหา
   if submit_button:
     if search_query.strip() != "":
       mask = (
@@ -46,7 +44,7 @@ try:
 
         st.dataframe(display_df, use_container_width=True, hide_index=True)
 
-        # ส่วนสำหรับแสดงปุ่มคลิกดูรูปภาพสำหรับมือถือและคอมพิวเตอร์
+        # ส่วนสำหรับแสดงปุ่มคลิกดูรูปภาพ
         st.markdown("---")
         st.subheader("🖼️ คลิกเพื่อดูรูปภาพของรายการที่พบ")
         for index, row in result_df.iterrows():
@@ -56,19 +54,27 @@ try:
               and str(row["ลิงก์รูปภาพ"]).strip() != ""
           ):
             item_name = (
-                row["ชื่อสินค้า"]
-                if "ชื่อสินค้า" in row
+                str(row["ชื่อสินค้า"])
+                if "ชื่อสินค้า" in row and pd.notna(row["ชื่อสินค้า"])
                 else f"รายการที่ {index+1}"
             )
+            
+            # ตรวจสอบรหัสสินค้า ถ้าไม่มีหรือเป็น nan ให้ข้ามการแสดงรหัส
             item_code = (
-                row["รหัสสินค้า"] if "รหัสสินค้า" in row else ""
+                str(row["รหัสสินค้า"])
+                if "รหัสสินค้า" in row and pd.notna(row["รหัสสินค้า"]) and str(row["รหัสสินค้า"]).strip().lower() != "nan"
+                else ""
             )
+            
             link_url = str(row["ลิงก์รูปภาพ"]).strip()
 
-            # ใช้ปุ่มลิงก์ที่รองรับการกดทั้งบนมือถือและคอมพิวเตอร์
-            st.link_button(
-                f"🔗 ดูรูปภาพ: {item_code} - {item_name}", link_url
-            )
+            # จัดรูปแบบข้อความปุ่ม: ถ้ามีรหัสให้แสดงรหัสด้วย ถ้าไม่มีให้แสดงแค่ชื่อสินค้า
+            if item_code:
+              button_label = f"🔗 ดูรูปภาพ: {item_code} - {item_name}"
+            else:
+              button_label = f"🔗 ดูรูปภาพ: {item_name}"
+
+            st.link_button(button_label, link_url)
       else:
         st.warning("ไม่พบข้อมูลที่ค้นหา")
     else:
