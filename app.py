@@ -13,61 +13,68 @@ def load_data():
   df = pd.read_csv(sheet_url)
   return df
 
-
 try:
   df = load_data()
 
-  search_query = st.text_input(
-      "🔍 ค้นหาข้อมูล (พิมพ์คีย์เวิร์ด เช่น ชื่ออุปกรณ์ โค้ดสินค้าหรือหมวดหมู่):"
-  )
-
-  if search_query:
-    mask = (
-        df.astype(str)
-        .apply(lambda x: x.str.contains(search_query, case=False, na=False))
-        .any(axis=1)
+  # ใช้ st.form เพื่อให้มีปุ่มกดค้นหาและกด Enter ได้
+  with st.form(key='search_form'):
+    search_query = st.text_input(
+        "🔍 ค้นหาข้อมูล (พิมพ์คีย์เวิร์ด เช่น ชื่ออุปกรณ์ โค้ดสินค้าหรือหมวดหมู่):"
     )
-    result_df = df[mask]
+    # เพิ่มปุ่มกดค้นหา
+    submit_button = st.form_submit_button(label="🔍 ค้นหา")
 
-    st.write(
-        f"ผลการค้นหา: พบ {len(result_df)} รายการสำหรับ '{search_query}'"
-    )
+  # ทำงานเมื่อกดปุ่มค้นหา หรือมีการพิมพ์ค้นหา
+  if submit_button:
+    if search_query.strip() != "":
+      mask = (
+          df.astype(str)
+          .apply(lambda x: x.str.contains(search_query, case=False, na=False))
+          .any(axis=1)
+      )
+      result_df = df[mask]
 
-    if not result_df.empty:
-      # สร้างตารางสำสำหรับแสดงผล (ซ่อนคอลัมน์ ลิงก์รูปภาพ ไม่ให้รกตาในตาราง)
-      display_df = result_df.copy()
-      if "ลิงก์รูปภาพ" in display_df.columns:
-        display_df = display_df.drop(columns=["ลิงก์รูปภาพ"])
+      st.write(
+          f"ผลการค้นหา: พบ {len(result_df)} รายการสำหรับ '{search_query}'"
+      )
 
-      st.dataframe(display_df, use_container_width=True, hide_index=True)
+      if not result_df.empty:
+        # สร้างตารางสำหรับแสดงผล (ซ่อนคอลัมน์ ลิงก์รูปภาพ ไม่ให้รกตาในตาราง)
+        display_df = result_df.copy()
+        if "ลิงก์รูปภาพ" in display_df.columns:
+          display_df = display_df.drop(columns=["ลิงก์รูปภาพ"])
 
-      # ส่วนสำหรับแสดงปุ่มคลิกดูรูปภาพสำหรับมือถือและคอมพิวเตอร์
-      st.markdown("---")
-      st.subheader("🖼️ คลิกเพื่อดูรูปภาพของรายการที่พบ")
-      for index, row in result_df.iterrows():
-        if (
-            "ลิงก์รูปภาพ" in row
-            and pd.notna(row["ลิงก์รูปภาพ"])
-            and str(row["ลิงก์รูปภาพ"]).strip() != ""
-        ):
-          item_name = (
-              row["ชื่อสินค้า"]
-              if "ชื่อสินค้า" in row
-              else f"รายการที่ {index+1}"
-          )
-          item_code = (
-              row["รหัสสินค้า"] if "รหัสสินค้า" in row else ""
-          )
-          link_url = str(row["ลิงก์รูปภาพ"]).strip()
+        st.dataframe(display_df, use_container_width=True, hide_index=True)
 
-          # ใช้ปุ่มลิงก์ที่รองรับการกดทั้งบนมือถือและคอมพิวเตอร์
-          st.link_button(
-              f"🔗 ดูรูปภาพ: {item_code} - {item_name}", link_url
-          )
+        # ส่วนสำหรับแสดงปุ่มคลิกดูรูปภาพสำหรับมือถือและคอมพิวเตอร์
+        st.markdown("---")
+        st.subheader("🖼️ คลิกเพื่อดูรูปภาพของรายการที่พบ")
+        for index, row in result_df.iterrows():
+          if (
+              "ลิงก์รูปภาพ" in row
+              and pd.notna(row["ลิงก์รูปภาพ"])
+              and str(row["ลิงก์รูปภาพ"]).strip() != ""
+          ):
+            item_name = (
+                row["ชื่อสินค้า"]
+                if "ชื่อสินค้า" in row
+                else f"รายการที่ {index+1}"
+            )
+            item_code = (
+                row["รหัสสินค้า"] if "รหัสสินค้า" in row else ""
+            )
+            link_url = str(row["ลิงก์รูปภาพ"]).strip()
+
+            # ใช้ปุ่มลิงก์ที่รองรับการกดทั้งบนมือถือและคอมพิวเตอร์
+            st.link_button(
+                f"🔗 ดูรูปภาพ: {item_code} - {item_name}", link_url
+            )
+      else:
+        st.warning("ไม่พบข้อมูลที่ค้นหา")
     else:
-      st.warning("ไม่พบข้อมูลที่ค้นหา")
+      st.warning("กรุณากรอกคำค้นหาก่อนกดปุ่มค้นหา")
   else:
-    st.info("กรุณาพิมพ์คำค้นหาในช่องด้านบน")
+    st.info("กรุณาพิมพ์คำค้นหาแล้วกดปุ่ม 'ค้นหา'")
 
 except Exception as e:
   st.error(
