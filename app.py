@@ -1,88 +1,134 @@
 import pandas as pd
 import streamlit as st
 
-st.set_page_config(page_title="PR Catalog", page_icon="🔍", layout="wide")
+st.set_page_config(page_title="PR System Portal", page_icon="🔍", layout="wide")
 
-st.title("📚 ระบบค้นหาข้อมูลแคตตาล็อกอุปกรณ์(PR)  ")
-st.write("พิมพ์คำค้นหาเพื่อดูข้อมูล PR (ข้อมูลนี้สำหรับค้นหาเท่านั้น)")
+# --- ส่วนของการใส่รหัสผ่าน (Password Protection) ---
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
 
-# ส่วนดึงข้อมูลจาก Google Sheets (ใช้ลิงก์ CSV)
-@st.cache_data(ttl=600)
-def load_data():
-  sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTNxcG6Zwu5wffcY9sYnrIo6Rukcv5Nw9EbtMU7TyCOR8uW2XGAEThrk-0500Y7ELiVDg_7EeJcitl4/pub?gid=0&single=true&output=csv"
-  df = pd.read_csv(sheet_url)
-  return df
+if not st.session_state.authenticated:
+    st.markdown("<h2 style='text-align: center; color: #1e3a8a;'>🔒 ระบบเข้าสู่ระบบภายใน</h2>", unsafe_allow_html=True)
+    password = st.text_input("กรุณากรอกรหัสผ่านเพื่อเข้าสู่ระบบ:", type="password")
+    
+    if st.button("เข้าสู่ระบบ", use_container_width=True):
+        if password == "PMA":
+            st.session_state.authenticated = True
+            st.rerun()
+        else:
+            st.error("รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง")
+    st.stop()
 
-try:
-  df = load_data()
-
-  # ใช้ st.form เพื่อให้มีปุ่มกดค้นหาและกด Enter ได้
-  with st.form(key='search_form'):
-    search_query = st.text_input(
-        "🔍 ค้นหาข้อมูล (พิมพ์คีย์เวิร์ด เช่น ชื่ออุปกรณ์ โค้ดสินค้าหรือหมวดหมู่):"
+# --- แถบด้านข้าง (Sidebar) สำหรับเลือก 2 ระบบ ---
+with st.sidebar:
+    st.markdown("### 🏢 เมนูระบบงาน")
+    
+    # เมนูเลือกหน้า
+    app_mode = st.radio(
+        "เลือกใช้งานระบบ:",
+        [
+            "🔍 ค้นหาข้อมูลแคตตาล็อกอุปกรณ์(PR)",
+            "📊 ติดตามข้อมูล PR (Purchase Requisition)"
+        ]
     )
-    submit_button = st.form_submit_button(label="🔍 ค้นหา")
+    
+    st.markdown("---")
+    if st.button("ออกจากระบบ", use_container_width=True):
+        st.session_state.authenticated = False
+        st.rerun()
 
-  if submit_button:
-    if search_query.strip() != "":
-      mask = (
-          df.astype(str)
-          .apply(lambda x: x.str.contains(search_query, case=False, na=False))
-          .any(axis=1)
-      )
-      result_df = df[mask]
+# --- ฟังก์ชันกลางสำหรับแสดงผลหน้าค้นหา ---
+def render_search_page(title, subtitle, sheet_url):
+    st.title(title)
+    st.write(subtitle)
 
-      st.write(
-          f"ผลการค้นหา: พบ {len(result_df)} รายการสำหรับ '{search_query}'"
-      )
+    @st.cache_data(ttl=600)
+    def load_data(url):
+        return pd.read_csv(url)
 
-      if not result_df.empty:
-        # สร้างตารางสำหรับแสดงผล (ซ่อนคอลัมน์ ลิงก์รูปภาพ ไม่ให้รกตาในตาราง)
-        display_df = result_df.copy()
-        if "ลิงก์รูปภาพ" in display_df.columns:
-          display_df = display_df.drop(columns=["ลิงก์รูปภาพ"])
+    try:
+        df = load_data(sheet_url)
 
-        st.dataframe(display_df, use_container_width=True, hide_index=True)
-
-        # ส่วนสำหรับแสดงปุ่มคลิกดูรูปภาพ
-        st.markdown("---")
-        st.subheader("🖼️ คลิกเพื่อดูรูปภาพของรายการที่พบ")
-        for index, row in result_df.iterrows():
-          if (
-              "ลิงก์รูปภาพ" in row
-              and pd.notna(row["ลิงก์รูปภาพ"])
-              and str(row["ลิงก์รูปภาพ"]).strip() != ""
-          ):
-            item_name = (
-                str(row["ชื่อสินค้า"])
-                if "ชื่อสินค้า" in row and pd.notna(row["ชื่อสินค้า"])
-                else f"รายการที่ {index+1}"
+        with st.form(key=f"search_form_{title}"):
+            search_query = st.text_input(
+                "🔍 ค้นหาข้อมูล (พิมพ์คีย์เวิร์ด เช่น ชื่ออุปกรณ์, รหัส, หรือเลขที่เอกสาร):"
             )
-            
-            # ตรวจสอบรหัสสินค้า ถ้าไม่มีหรือเป็น nan ให้ข้ามการแสดงรหัส
-            item_code = (
-                str(row["รหัสสินค้า"])
-                if "รหัสสินค้า" in row and pd.notna(row["รหัสสินค้า"]) and str(row["รหัสสินค้า"]).strip().lower() != "nan"
-                else ""
-            )
-            
-            link_url = str(row["ลิงก์รูปภาพ"]).strip()
+            submit_button = st.form_submit_button(label="🔍 ค้นหา")
 
-            # จัดรูปแบบข้อความปุ่ม: ถ้ามีรหัสให้แสดงรหัสด้วย ถ้าไม่มีให้แสดงแค่ชื่อสินค้า
-            if item_code:
-              button_label = f"🔗 ดูรูปภาพ: {item_code} - {item_name}"
+        if submit_button:
+            if search_query.strip() != "":
+                mask = (
+                    df.astype(str)
+                    .apply(lambda x: x.str.contains(search_query, case=False, na=False))
+                    .any(axis=1)
+                )
+                result_df = df[mask]
+
+                st.write(
+                    f"ผลการค้นหา: พบ {len(result_df)} รายการสำหรับ '{search_query}'"
+                )
+
+                if not result_df.empty:
+                    display_df = result_df.copy()
+                    if "ลิงก์รูปภาพ" in display_df.columns:
+                        display_df = display_df.drop(columns=["ลิงก์รูปภาพ"])
+
+                    st.dataframe(display_df, use_container_width=True, hide_index=True)
+
+                    # ส่วนแสดงปุ่มรูปภาพเฉพาะถ้ามีคอลัมน์ลิงก์รูปภาพ
+                    if "ลิงก์รูปภาพ" in result_df.columns:
+                        st.markdown("---")
+                        st.subheader("🖼️ คลิกเพื่อดูรูปภาพของรายการที่พบ")
+                        for index, row in result_df.iterrows():
+                            if (
+                                pd.notna(row["ลิงก์รูปภาพ"])
+                                and str(row["ลิงก์รูปภาพ"]).strip() != ""
+                            ):
+                                item_name = (
+                                    str(row["ชื่อสินค้า"])
+                                    if "ชื่อสินค้า" in row and pd.notna(row["ชื่อสินค้า"])
+                                    else f"รายการที่ {index+1}"
+                                )
+                                
+                                item_code = (
+                                    str(row["รหัสสินค้า"])
+                                    if "รหัสสินค้า" in row and pd.notna(row["รหัสสินค้า"]) and str(row["รหัสสินค้า"]).strip().lower() != "nan"
+                                    else ""
+                                )
+                                
+                                link_url = str(row["ลิงก์รูปภาพ"]).strip()
+
+                                if item_code:
+                                    button_label = f"🔗 ดูรูปภาพ: {item_code} - {item_name}"
+                                else:
+                                    button_label = f"🔗 ดูรูปภาพ: {item_name}"
+
+                                st.link_button(button_label, link_url)
+                else:
+                    st.warning("ไม่พบข้อมูลที่ค้นหา")
             else:
-              button_label = f"🔗 ดูรูปภาพ: {item_name}"
+                st.warning("กรุณากรอกคำค้นหาก่อนกดปุ่มค้นหา")
+        else:
+            st.info("กรุณาพิมพ์คำค้นหาแล้วกดปุ่ม 'ค้นหา'")
 
-            st.link_button(button_label, link_url)
-      else:
-        st.warning("ไม่พบข้อมูลที่ค้นหา")
-    else:
-      st.warning("กรุณากรอกคำค้นหาก่อนกดปุ่มค้นหา")
-  else:
-    st.info("กรุณาพิมพ์คำค้นหาแล้วกดปุ่ม 'ค้นหา'")
+    except Exception as e:
+        st.error(
+            "ไม่สามารถโหลดข้อมูลจาก Google Sheet ได้ กรุณาตรวจสอบลิงก์หรือการเผยแพร่เว็บอีกครั้ง"
+        )
 
-except Exception as e:
-  st.error(
-      "ยังไม่ได้ใส่ลิงก์ Google Sheet หรือลิงก์ยังไม่ถูกต้อง กรุณาตรวจสอบลิงก์"
-  )
+# --- สลับหน้าจอตามที่เลือกใน Sidebar ---
+if app_mode == "🔍 ค้นหาข้อมูลแคตตาล็อกอุปกรณ์(PR)":
+    catalog_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTNxcG6Zwu5wffcY9sYnrIo6Rukcv5Nw9EbtMU7TyCOR8uW2XGAEThrk-0500Y7ELiVDg_7EeJcitl4/pub?gid=0&single=true&output=csv"
+    render_search_page(
+        "📚 ระบบค้นหาข้อมูลแคตตาล็อกอุปกรณ์ (PR)",
+        "พิมพ์คำค้นหาเพื่อดูข้อมูล PR (ข้อมูลนี้สำหรับค้นหาเท่านั้น)",
+        catalog_url
+    )
+
+elif app_mode == "📊 ติดตามข้อมูล PR (Purchase Requisition)":
+    tracking_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRbLjrawZUFDLXFempBO5MXrVTx-w26f_zv_6GsdOLJt4gKcHySUdRQZPe1bUnvPQ/pub?gid=1053333613&single=true&output=csv"
+    render_search_page(
+        "📈 ระบบติดตามข้อมูล PR (Purchase Requisition)",
+        "พิมพ์คำค้นหาเพื่อติดตามสถานะและข้อมูล PR",
+        tracking_url
+    )
