@@ -3,16 +3,22 @@ import streamlit as st
 
 st.set_page_config(page_title="PR System Portal", page_icon="🔍", layout="wide")
 
-# --- ส่วนของการใส่รหัสผ่าน (Password Protection) ---
+# --- ส่วนของการใส่รหัสผ่าน (ดึงจาก Streamlit Secrets โดยตรง) ---
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
 if not st.session_state.authenticated:
-    st.markdown("<h2 style='text-align: center; color: #1e3a8a;'>🔒 เข้าสู่ระบบจัดซื้อ </h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; color: #1e3a8a;'>🔒 ระบบเข้าสู่ระบบภายใน</h2>", unsafe_allow_html=True)
     password = st.text_input("กรุณากรอกรหัสผ่านเพื่อเข้าสู่ระบบ:", type="password")
     
     if st.button("เข้าสู่ระบบ", use_container_width=True):
-        if password == "PR":
+        try:
+            correct_password = st.secrets["APP_PASSWORD"]
+        except Exception:
+            st.error("ยังไม่ได้ตั้งค่ารหัสผ่านใน Streamlit Secrets (APP_PASSWORD)")
+            st.stop()
+        
+        if password == correct_password:
             st.session_state.authenticated = True
             st.rerun()
         else:
@@ -27,8 +33,8 @@ with st.sidebar:
     app_mode = st.radio(
         "เลือกใช้งานระบบ:",
         [
-            "🔍 ค้นหาข้อมูลอุปกรณ์(PR)",
-            "📊 ติดตามข้อมูล PR "
+            "🔍 ค้นหาข้อมูลแคตตาล็อกอุปกรณ์(PR)",
+            "📊 ติดตามข้อมูล PR (Purchase Requisition)"
         ]
     )
     
@@ -113,12 +119,12 @@ def render_search_page(title, subtitle, sheet_url):
 
     except Exception as e:
         st.error(
-            "ไม่สามารถโหลดข้อมูลจาก Google Sheet ได้ กรุณาตรวจสอบลิงก์หรือการเผยแพร่เว็บอีกครั้ง"
+            "ไม่สามารถโหลดข้อมูลจาก Google Sheet ได้ กรุณาตรวจสอบลิงก์หรือการตั้งค่าใน Secrets"
         )
 
-# --- สลับหน้าจอตามที่เลือกใน Sidebar ---
+# --- สลับหน้าจอตามที่เลือกใน Sidebar (ดึงลิงก์จาก Secrets) ---
 if app_mode == "🔍 ค้นหาข้อมูลแคตตาล็อกอุปกรณ์(PR)":
-    catalog_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTNxcG6Zwu5wffcY9sYnrIo6Rukcv5Nw9EbtMU7TyCOR8uW2XGAEThrk-0500Y7ELiVDg_7EeJcitl4/pub?gid=0&single=true&output=csv"
+    catalog_url = st.secrets["CATALOG_URL"]
     render_search_page(
         "📚 ระบบค้นหาข้อมูลแคตตาล็อกอุปกรณ์ (PR)",
         "พิมพ์คำค้นหาเพื่อดูข้อมูล PR (ข้อมูลนี้สำหรับค้นหาเท่านั้น)",
@@ -126,7 +132,7 @@ if app_mode == "🔍 ค้นหาข้อมูลแคตตาล็อ�
     )
 
 elif app_mode == "📊 ติดตามข้อมูล PR (Purchase Requisition)":
-    tracking_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRbLjrawZUFDLXFempBO5MXrVTx-w26f_zv_6GsdOLJt4gKcHySUdRQZPe1bUnvPQ/pub?gid=1053333613&single=true&output=csv"
+    tracking_url = st.secrets["TRACKING_URL"]
     render_search_page(
         "📈 ระบบติดตามข้อมูล PR (Purchase Requisition)",
         "พิมพ์คำค้นหาเพื่อติดตามสถานะและข้อมูล PR",
